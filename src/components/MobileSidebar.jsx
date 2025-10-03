@@ -19,7 +19,7 @@ const MobileSidebar = ({ handleCollapse, mobileSidebar }) => {
           <Link
             to="/new-chat"
             onClick={handleCollapse}
-            className={`flex gap-1.5 items-center cursor-pointer rounded-[50px] transition-all duration-300 text-gray-500
+            className={`flex gap-1.5 cursor-pointer items-center rounded-[50px] transition-all duration-300 text-gray-500
               w-full px-6 py-3 bg-[#e6eaf1] dark:bg-dark-hover/80 hover:bg-[#dfe3ee] hover:dark:bg-dark-hover
             `}
           >

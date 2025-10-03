@@ -1,14 +1,14 @@
-// MainInput.js - Dark mode version
+// MainInput.js - OPTIMISTIC UI UPDATE VERSION
 import React, { useEffect, useRef, useState } from "react";
 import { MdOutlineKeyboardVoice } from "react-icons/md";
 import { LuImagePlus } from "react-icons/lu";
 import { IoMdSend } from "react-icons/io";
 import { useDispatch, useSelector } from "react-redux";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { clearInput, setInputValue } from "../redux/suggestion/SuggestionSlice";
 import { createNewMessage, sendMessageStream } from "../redux/chat/chatThunk";
-import { useNavigate } from "react-router";
-import {motion} from "motion/react";
+import { setPendingMessage } from "../redux/chat/chatSlice";
+import { motion } from "motion/react";
 
 const MainInput = () => {
   const { id: chatId } = useParams();
@@ -16,79 +16,75 @@ const MainInput = () => {
   const [resize, setresize] = useState(false);
   const textRef = useRef(null);
   const value = useSelector((state) => state.suggestion.value);
-  const { currentChat } = useSelector((state) => state.chat);
   const dispatch = useDispatch();
 
   const { messageLoading, isStreaming } = useSelector((state) => state.chat);
 
   useEffect(() => {
-  if (!textRef.current) return;
-  
-  // Pehle height ko auto kar do taaki accurate scrollHeight mile
-  textRef.current.style.height = "auto";
+    if (!textRef.current) return;
 
-  if (!value || value.trim() === "") {
-    textRef.current.style.height = "34px";
-    textRef.current.style.overflowY = "hidden";
-    return;
-  }
-  let newHeight = textRef.current.scrollHeight;
+    textRef.current.style.height = "auto";
 
-  if(textRef.current.scrollHeight > 34){
-    setresize(true);
-  }
+    if (!value || value.trim() === "") {
+      textRef.current.style.height = "34px";
+      textRef.current.style.overflowY = "hidden";
+      return;
+    }
+    let newHeight = textRef.current.scrollHeight;
 
-  if (newHeight > 200) {
-    newHeight = 200;
-    textRef.current.style.overflowY = "auto";
-  } else {
-    textRef.current.style.overflowY = "hidden";
-  }
-  
-  textRef.current.style.height = `${newHeight}px`;
-}, [value]);
+    if (textRef.current.scrollHeight > 34) {
+      setresize(true);
+    }
+
+    if (newHeight > 200) {
+      newHeight = 200;
+      textRef.current.style.overflowY = "auto";
+    } else {
+      textRef.current.style.overflowY = "hidden";
+    }
+
+    textRef.current.style.height = `${newHeight}px`;
+  }, [value]);
 
   const handleSend = async () => {
     if (!value.trim() || messageLoading || isStreaming) return;
     const messageToSend = value.trim();
-    
+
+    // Clear input immediately for better UX
+    dispatch(clearInput());
+    if (textRef.current) {
+      textRef.current.style.height = "34px";
+      textRef.current.style.overflowY = "hidden";
+    }
+
     if (chatId) {
-      // Clear input for existing chat
-      dispatch(clearInput());
-
-      if (textRef.current) {
-        textRef.current.style.height = "34px";
-        textRef.current.style.overflowY = "hidden";
-      }
-
+      // Existing chat - normal flow
       dispatch(sendMessageStream({ chatId, message: messageToSend }));
     } else {
+      // NEW CHAT - Set pending message FIRST
+      console.log("🚀 Setting pending message:", messageToSend);
+      dispatch(setPendingMessage(messageToSend));
+
       try {
-        // Clear input before creating new chat
-        dispatch(clearInput());
-
-        if (textRef.current) {
-          textRef.current.style.height = "34px";
-          textRef.current.style.overflowY = "hidden";
-        }
-
-        // ✅ FIX: Pass the messageToSend as parameter
+        // Create new chat
+        console.log("📝 Creating new chat...");
         const result = await dispatch(createNewMessage(messageToSend)).unwrap();
         const newid = result.data.chat._id;
+        console.log("✅ Chat created, ID:", newid);
 
-        if (currentChat?._id !== result.data.chat._id) {
-          navigate(`/chat/${newid}`);
-          
-          setTimeout(() => {
-            dispatch(
-              sendMessageStream({ chatId: newid, message: messageToSend })
-            );
-          }, 500); // Reduced timeout
-        }
+        // Navigate immediately
+        console.log("🔄 Navigating to:", `/chat/${newid}`);
+        navigate(`/chat/${newid}`, { replace: true });
+
+        // Small delay for navigation to complete
+        setTimeout(() => {
+          console.log("📤 Sending message stream...");
+          dispatch(sendMessageStream({ chatId: newid, message: messageToSend }));
+        }, 100);
       } catch (error) {
         console.error("Error creating chat:", error);
+        dispatch(setPendingMessage(null));
         alert("Failed to create new chat");
-        return;
       }
     }
   };
@@ -102,7 +98,11 @@ const MainInput = () => {
 
   return (
     <div className="main-wrapper pb-4 pt-3 mx-auto">
-      <div className={`sm:px-6 px-4 sm:py-3 py-2 rounded-[40px] bg-light-gray dark:bg-dark-input flex gap-3 ${resize ? 'items-end' : 'items-center'}`}>
+      <div
+        className={`sm:px-6 px-4 sm:py-3 py-2 rounded-[40px] bg-light-gray dark:bg-dark-input flex gap-3 ${
+          resize ? "items-end" : "items-center"
+        }`}
+      >
         <textarea
           transition={{ duration: 0.3, ease: "easeInOut" }}
           rows={1}
@@ -124,8 +124,7 @@ const MainInput = () => {
               size={23}
             />
           </button>
-          <button className="w-10 cursor-pointer h-10 hover:bg-gray-200 dark:hover:bg-dark-hover rounded-full bg-main-blue
-           dark:bg-transparent flex items-center justify-center transition-colors">
+          <button className="w-10 cursor-pointer h-10 hover:bg-gray-200 dark:hover:bg-dark-hover rounded-full bg-main-blue dark:bg-transparent flex items-center justify-center transition-colors">
             {value.trim().length > 0 ? (
               <IoMdSend
                 onClick={handleSend}

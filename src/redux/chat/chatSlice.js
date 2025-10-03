@@ -1,4 +1,4 @@
-// chatSlice.js - Updated with safe streaming support
+// chatSlice.js - FINAL FIX with pending message preservation
 import { createSlice } from "@reduxjs/toolkit";
 import {
     createNewMessage,
@@ -20,9 +20,8 @@ const initialState = {
     messageError: null,
     messageSuccess: false,
 
-    // ✅ Streaming-related
     isStreaming: false,
-    streamingMessage: "",   // start as empty string (NOT null)
+    streamingMessage: "",
     streamingId: null,
     lastMessageId: null,
     shouldShowTypingOnLastMessage: false,
@@ -44,14 +43,12 @@ const chatSlice = createSlice({
             state.error = null;
         },
 
-        // --- Streaming helpers ---
         setIsStreaming: (state, action) => {
             state.isStreaming = action.payload;
         },
         setStreamingMessage: (state, action) => {
             state.streamingMessage =
                 typeof action.payload === "string" ? action.payload : "";
-            console.log("🔄 setStreamingMessage:", state.streamingMessage);
         },
         appendToStreamingMessage: (state, action) => {
             const currentMessage =
@@ -59,11 +56,6 @@ const chatSlice = createSlice({
             const newChunk =
                 typeof action.payload === "string" ? action.payload : "";
             state.streamingMessage = currentMessage + newChunk;
-            console.log("🔄 appendToStreamingMessage:", {
-                currentMessage,
-                newChunk,
-                result: state.streamingMessage,
-            });
         },
         clearStreamingMessage: (state) => {
             state.streamingMessage = "";
@@ -74,9 +66,7 @@ const chatSlice = createSlice({
             state.streamingId = action.payload;
         },
 
-        // --- Messages ---
         addUserMessage: (state, action) => {
-            console.log("🔄 addUserMessage:", action.payload);
             if (state.currentChat && state.currentChat.messages) {
                 state.currentChat.messages.push({
                     role: "user",
@@ -108,7 +98,6 @@ const chatSlice = createSlice({
             state.streamingMessage = "";
         },
 
-
         updateChatTitle: (state, action) => {
             if (state.currentChat) {
                 state.currentChat.title = action.payload;
@@ -125,7 +114,6 @@ const chatSlice = createSlice({
 
     extraReducers: (builder) => {
         builder
-            // --- All Chats ---
             .addCase(getAllChats.pending, (state) => {
                 state.isLoading = true;
                 state.error = null;
@@ -142,14 +130,47 @@ const chatSlice = createSlice({
                 state.success = false;
             })
 
-            // --- Get Chat by ID ---
+            // ✅ CRITICAL FIX: Preserve pending message when fetching chat
             .addCase(getChatById.pending, (state) => {
+                console.log("🔵 getChatById.pending - pendingMessage:", state.pendingMessage);
                 state.isLoading = true;
                 state.messageError = null;
             })
             .addCase(getChatById.fulfilled, (state, action) => {
+                console.log("🟢 getChatById.fulfilled - pendingMessage:", state.pendingMessage);
+                console.log("🟢 Fetched messages:", action.payload.data.chat.messages);
+                
                 state.isLoading = false;
-                state.currentChat = action.payload.data.chat;
+                const fetchedChat = action.payload.data.chat;
+                
+                // ✅ If pending message exists, add it to messages
+                if (state.pendingMessage) {
+                    console.log("✅ Adding pending message to chat");
+                    const hasPendingInMessages = fetchedChat.messages?.some(
+                        msg => msg.content === state.pendingMessage && msg.role === "user"
+                    );
+                    
+                    if (!hasPendingInMessages) {
+                        console.log("✅ Pending not in messages, adding it");
+                        // Add pending message to beginning if not already there
+                        fetchedChat.messages = [
+                            {
+                                role: "user",
+                                content: state.pendingMessage,
+                                timestamp: new Date().toISOString(),
+                                id: Date.now(),
+                            },
+                            ...(fetchedChat.messages || [])
+                        ];
+                    } else {
+                        console.log("⚠️ Pending already in messages");
+                    }
+                } else {
+                    console.log("❌ No pending message");
+                }
+                
+                console.log("🟢 Final messages:", fetchedChat.messages);
+                state.currentChat = fetchedChat;
                 state.messageError = null;
                 state.messageSuccess = true;
                 state.shouldShowTypingOnLastMessage = false;
@@ -161,19 +182,22 @@ const chatSlice = createSlice({
                 state.messageSuccess = false;
             })
 
-            // --- Streaming Message ---
             .addCase(sendMessageStream.pending, (state) => {
+                console.log("🔵 sendMessageStream.pending - pendingMessage:", state.pendingMessage);
                 state.messageLoading = true;
                 state.messageError = null;
                 state.isStreaming = true;
-                state.streamingMessage = ""; // ✅ reset safely
+                state.streamingMessage = "";
+                // ❌ DON'T clear pending here - wait for stream to complete!
             })
             .addCase(sendMessageStream.fulfilled, (state) => {
-                // finalization happens via finalizeStreamingMessage reducer
+                console.log("🟢 sendMessageStream.fulfilled - Clearing pending");
                 state.messageLoading = false;
                 state.messageError = null;
                 state.messageSuccess = true;
                 state.isStreaming = false;
+                // ✅ Clear pending AFTER stream completes
+                state.pendingMessage = null;
             })
             .addCase(sendMessageStream.rejected, (state, action) => {
                 state.messageLoading = false;
@@ -183,7 +207,6 @@ const chatSlice = createSlice({
                 state.streamingMessage = "";
             })
 
-            // --- Non-stream sendMessage ---
             .addCase(sendMessage.pending, (state) => {
                 state.messageLoading = true;
                 state.messageError = null;
@@ -202,15 +225,34 @@ const chatSlice = createSlice({
                 state.messageSuccess = false;
             })
 
-            // --- New Chat ---
             .addCase(createNewMessage.pending, (state) => {
+                console.log("🔵 createNewMessage.pending - pendingMessage:", state.pendingMessage);
                 state.isLoading = true;
                 state.error = null;
             })
             .addCase(createNewMessage.fulfilled, (state, action) => {
+                console.log("🟢 createNewMessage.fulfilled - pendingMessage:", state.pendingMessage);
                 state.isLoading = false;
-                state.chats.unshift(action.payload.data.chat);
-                state.currentChat = action.payload.data.chat;
+                const newChat = action.payload.data.chat;
+                
+                // ✅ If pending message exists, add it immediately
+                if (state.pendingMessage) {
+                    console.log("✅ Adding pending to new chat");
+                    newChat.messages = [
+                        {
+                            role: "user",
+                            content: state.pendingMessage,
+                            timestamp: new Date().toISOString(),
+                            id: Date.now(),
+                        }
+                    ];
+                } else {
+                    console.log("❌ No pending in createNewMessage");
+                }
+                
+                console.log("🟢 New chat messages:", newChat.messages);
+                state.chats.unshift(newChat);
+                state.currentChat = newChat;
                 state.error = null;
                 state.success = true;
             })
@@ -218,9 +260,9 @@ const chatSlice = createSlice({
                 state.isLoading = false;
                 state.error = action.payload;
                 state.success = false;
+                state.pendingMessage = null; // Clear on error
             })
 
-            // --- Delete Chat ---
             .addCase(deleteChat.pending, (state) => {
                 state.isLoading = true;
                 state.error = null;

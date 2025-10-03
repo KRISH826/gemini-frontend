@@ -36,7 +36,7 @@ export const deleteChatApi = async (chatId) => {
 
 // 2. FIXED chatApi.js - Handle empty or undefined chunks properly
 export const sendMessageStreamApi = (chatId, message, onChunk, onComplete, onError) => {
-  const baseURL = import.meta.env.VITE_BACKEND_PORT;
+  const baseURL = import.meta.env.VITE_BACKEND_PORT_DEV;
   const url = `${baseURL}/gemini/sendmessage/${chatId}/stream`;
   
   return new Promise((resolve, reject) => {

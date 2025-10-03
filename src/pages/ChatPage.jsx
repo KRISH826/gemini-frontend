@@ -10,7 +10,7 @@ import TypingEffect from "../components/TypingEffect";
 import { MarkDownComponents } from "../components/markdown/MarkDown";
 import { motion, AnimatePresence } from "motion/react";
 import "./../App.css";
-import loader from "../assets/gemini-color.svg"; // 👈 import your svg
+import loader from "../assets/gemini-color.svg";
 
 const ChatPage = () => {
   const { id } = useParams();
@@ -18,6 +18,7 @@ const ChatPage = () => {
   const { isLoading } = useSelector((state) => state.chat);
   const messagesEndRef = useRef(null);
   const chatContainerRef = useRef(null);
+  const hasFetchedRef = useRef(null); // Track last fetched ID
 
   const {
     currentChat,
@@ -30,9 +31,12 @@ const ChatPage = () => {
 
   // Fetch chat when ID changes
   useEffect(() => {
-    if (id) {
+    console.log("🔵 ChatPage useEffect - ID:", id, "Last fetched:", hasFetchedRef.current);
+    if (id && id !== hasFetchedRef.current) {
+      console.log("📥 Fetching chat:", id);
       dispatch(getChatById(id));
       dispatch(resetTypingEffect());
+      hasFetchedRef.current = id;
     }
   }, [id, dispatch]);
 
@@ -49,7 +53,7 @@ const ChatPage = () => {
   useEffect(() => {
     const timer = setTimeout(() => {
       scrollToBottom();
-    }, 100); // delay ensures DOM updated
+    }, 100);
     return () => clearTimeout(timer);
   }, [currentChat?.messages, streamingMessage, messageLoading]);
 
@@ -65,7 +69,7 @@ const ChatPage = () => {
 
   return (
     <div className="flex-1 main-wrapper flex flex-col h-[calc(100vh-64px)]">
-      {isLoading ? (
+      {isLoading && !currentChat ? (
         <div className="mx-auto flex-1 flex justify-center items-center flex-col">
           <div className="w-10 h-10 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin"></div>
         </div>
@@ -76,7 +80,7 @@ const ChatPage = () => {
         >
           <div className="max-w-4xl mx-auto h-full">
             <div className="flex flex-col gap-8 pb-4 h-full">
-              {currentChat?.messages?.length > 0 && (
+              {currentChat?.messages?.length > 0 ? (
                 <>
                   {currentChat.messages.map((msg, i) => {
                     const isLastMessage = i === currentChat.messages.length - 1;
@@ -136,88 +140,75 @@ const ChatPage = () => {
                       </motion.div>
                     );
                   })}
-                  {/* animate message */}
+                  {/* Loading/Streaming indicators */}
                   {messageLoading || (isStreaming && !streamingMessage) ? (
-                    <>
-                      <AnimatePresence>
-                        <motion.div
-                          key="ai-loader"
-                          className="flex justify-start"
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          transition={{ duration: 0.4 }}
-                        >
-                          <div className="text-main-dark2 font-medium min-h-[calc(100vh-280px)]">
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm text-gray-500">
-                                {isStreaming ? (
-                                  "AI is responding..."
-                                ) : (
-                                  <>
-                                    <div className="flex items-center gap-2">
-                                      <motion.img
-                                        animate={{
-                                          rotate: [0, 360, 360, 0],
-                                        }}
-                                        transition={{
-                                          duration: 2.25,
-                                          repeat: Infinity,
-                                          ease: "easeInOut",
-                                        }}
-                                        src={loader}
-                                        alt="loader"
-                                        className="w-7 h-7"
-                                      />
-                                      <motion.span
-                                        animate={{
-                                          opacity: [1, 0.6, 1],
-                                        }}
-                                        transition={{
-                                          duration: 1,
-                                          repeat: Infinity,
-                                          ease: "easeInOut",
-                                        }}
-                                        className="text-sm italic font-mono text-gray-500 dark:text-white"
-                                      >
-                                        Gemini is thinking...
-                                      </motion.span>
-                                    </div>
-                                  </>
-                                )}
-                              </span>
-                            </div>
-                          </div>
-                        </motion.div>
-                      </AnimatePresence>
-                    </>
-                  ) : (
-                    <>
-                      <AnimatePresence>
-                        {isStreaming &&
-                          (streamingMessage?.trim() || "") !== "" && (
-                            <motion.div
-                              key="streaming-message"
-                              className="flex justify-start"
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              exit={{ opacity: 0 }}
-                              transition={{ duration: 0.4 }}
+                    <AnimatePresence>
+                      <motion.div
+                        key="ai-loader"
+                        className="flex justify-start"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 0.4 }}
+                      >
+                        <div className="text-main-dark2 font-medium min-h-[calc(100vh-280px)]">
+                          <div className="flex items-center gap-2">
+                            <motion.img
+                              animate={{
+                                rotate: [0, 360, 360, 0],
+                              }}
+                              transition={{
+                                duration: 2.25,
+                                repeat: Infinity,
+                                ease: "easeInOut",
+                              }}
+                              src={loader}
+                              alt="loader"
+                              className="w-7 h-7"
+                            />
+                            <motion.span
+                              animate={{
+                                opacity: [1, 0.6, 1],
+                              }}
+                              transition={{
+                                duration: 1,
+                                repeat: Infinity,
+                                ease: "easeInOut",
+                              }}
+                              className="text-sm italic font-mono text-gray-500 dark:text-white"
                             >
-                              <div className="text-main-dark2 markdown font-medium max-w-full">
-                                <ReactMarkdown
-                                  components={MarkDownComponents}
-                                  remarkPlugins={[remarkGfm]}
-                                >
-                                  {streamingMessage || ""}
-                                </ReactMarkdown>
-                              </div>
-                            </motion.div>
-                          )}
-                      </AnimatePresence>
-                    </>
+                              Gemini is thinking...
+                            </motion.span>
+                          </div>
+                        </div>
+                      </motion.div>
+                    </AnimatePresence>
+                  ) : (
+                    <AnimatePresence>
+                      {isStreaming &&
+                        (streamingMessage?.trim() || "") !== "" && (
+                          <motion.div
+                            key="streaming-message"
+                            className="flex justify-start"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.4 }}
+                          >
+                            <div className="text-main-dark2 markdown font-medium max-w-full">
+                              <ReactMarkdown
+                                components={MarkDownComponents}
+                                remarkPlugins={[remarkGfm]}
+                              >
+                                {streamingMessage || ""}
+                              </ReactMarkdown>
+                            </div>
+                          </motion.div>
+                        )}
+                    </AnimatePresence>
                   )}
                 </>
-              )}
+              ) : null}
+
               <div ref={messagesEndRef} />
             </div>
           </div>
