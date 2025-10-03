@@ -1,0 +1,153 @@
+import { createAsyncThunk } from "@reduxjs/toolkit";
+import { createNewChatApi, deleteChatApi, getAllChatsApi, getChatByIdApi, sendMessageApi, sendMessageStreamApi } from "./chatApi";
+// ✅ IMPORT THE ACTION CREATORS
+import { 
+  addUserMessage, 
+  setIsStreaming, 
+  clearStreamingMessage, 
+  appendToStreamingMessage, 
+  finalizeStreamingMessage, 
+  updateChatTitle 
+} from "./chatSlice";
+
+export const getAllChats = createAsyncThunk(
+    '/gemini/allchat',
+    async (_, thunkAPI) => {
+        try {
+            const result = await getAllChatsApi();
+            return result;
+        } catch (error) {
+            console.error('❌ API call failed:', error); // Debug log
+            console.error('Error details:', {
+                message: error.message,
+                status: error.response?.status,
+                data: error.response?.data
+            });
+            const err = error;
+            return thunkAPI.rejectWithValue(err.response?.data?.message || 'Failed to get chats');
+        }
+    }
+);
+
+export const getChatById = createAsyncThunk(
+    "/gemini/getchat",
+    async (chatId, thunkAPI) => {
+        try {
+            const result = await getChatByIdApi(chatId);
+            return result; // full response
+        } catch (error) {
+            console.error('❌ API call failed:', error); // Debug log
+            console.error('Error details:', {
+                message: error.message,
+                status: error.response?.status,
+                data: error.response?.data
+            });
+            const err = error;
+            return thunkAPI.rejectWithValue(err.response?.data?.message || 'Failed to get chats');
+        }
+    }
+);
+
+export const sendMessage = createAsyncThunk(
+  "/gemini/sendmessage",
+  async ({ chatId, message }, thunkAPI) => {
+    try {
+      const result = await sendMessageApi(chatId, message);
+      return { chatId, message: result.message };  
+    } catch (error) {
+      console.error("❌ API call failed:", error);
+      const err = error;
+      return thunkAPI.rejectWithValue(
+        err.response?.data?.message || "Failed to send message"
+      );
+    }
+  }
+);
+
+export const createNewMessage = createAsyncThunk(
+  "/gemini/createnewchat",
+  async (message, thunkAPI) => {
+    try {
+      const result = await createNewChatApi(message); // Pass message instead of title
+      return result; // Return the created chat data
+    } catch (error) {
+      console.error("❌ API call failed:", error);
+      const err = error;
+      return thunkAPI.rejectWithValue(
+        err.response?.data?.message || "Failed to create new chat"
+      );
+    }
+  }
+);
+
+// ✅ FIXED: Use proper action creators instead of string types
+export const sendMessageStream = createAsyncThunk(
+  "/gemini/sendmessage/stream",
+  async ({ chatId, message }, thunkAPI) => {
+    try {
+      thunkAPI.dispatch(addUserMessage(message));
+      thunkAPI.dispatch(setIsStreaming(true));
+      thunkAPI.dispatch(clearStreamingMessage());
+
+      return new Promise((resolve, reject) => {
+        sendMessageStreamApi(
+          chatId,
+          message,
+          // 🔹 onChunk
+          (chunk) => {
+            if (typeof chunk === "string") {
+              thunkAPI.dispatch(appendToStreamingMessage(chunk));
+            }
+          },
+          // 🔹 onComplete
+          (finalData) => {
+            thunkAPI.dispatch(finalizeStreamingMessage());
+
+            if (finalData?.title) {
+              thunkAPI.dispatch(updateChatTitle(finalData.title));
+            }
+
+            const safeMessage =
+              typeof finalData?.fullMessage === "string"
+                ? finalData.fullMessage
+                : thunkAPI.getState().chat.streamingMessage || "";
+
+            resolve({
+              chatId,
+              message: safeMessage,
+            });
+          },
+          // 🔹 onError
+          (error) => {
+            thunkAPI.dispatch(clearStreamingMessage());
+            reject(new Error(error));
+          }
+        );
+      });
+    } catch (error) {
+      console.error("❌ Streaming failed:", error);
+      thunkAPI.dispatch(clearStreamingMessage());
+      return thunkAPI.rejectWithValue(
+        error.message || "Failed to send message"
+      );
+    }
+  }
+);
+
+
+
+export const deleteChat = createAsyncThunk(
+  "/gemini/deletechat",
+  async (chatId, thunkAPI) => {
+    try {
+      const result = await deleteChatApi(chatId);
+      return result;
+    } catch (error) {
+      console.error("❌ API call failed:", error);
+      const err = error;
+      return thunkAPI.rejectWithValue(
+        err.response?.data?.message || "Failed to delete chat"
+      );
+    }
+  }
+);

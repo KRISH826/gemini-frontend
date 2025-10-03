@@ -1,0 +1,23 @@
+.main_body::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    width: 80px;
+    height: 80px;
+    background-color: #ff5546;
+    border-radius:20px;
+    z-index: 1;
+    filter: blur(160px);
+    bottom: 15%;
+}
+
+.main-wrapper {
+    width: 900px;
+    margin: 0 auto;
+}
+
+@media (max-width: 1250px) {
+    .main-wrapper {
+        width: 100%;
+    }
+}
