@@ -59,7 +59,6 @@ export const sendMessageStreamApi = (chatId, message, onChunk, onComplete, onErr
       function readStream() {
         return reader.read().then(({ done, value }) => {
           if (done) {
-            console.log('✅ Stream completed. Full message:', fullMessage);
             onComplete?.({ fullMessage });
             resolve({ fullMessage });
             return;
@@ -72,7 +71,6 @@ export const sendMessageStreamApi = (chatId, message, onChunk, onComplete, onErr
             if (line.startsWith('data: ')) {
               try {
                 const data = JSON.parse(line.slice(6));
-                console.log('📨 Received chunk data:', data);
                 
                 if (data.error) {
                   console.error('❌ Stream error:', data.error);
@@ -82,7 +80,6 @@ export const sendMessageStreamApi = (chatId, message, onChunk, onComplete, onErr
                 }
                 
                 if (data.done) {
-                  console.log('✅ Stream done signal received');
                   onComplete?.(data);
                   resolve(data);
                   return;
@@ -92,7 +89,6 @@ export const sendMessageStreamApi = (chatId, message, onChunk, onComplete, onErr
                 if (data.content !== undefined && data.content !== null) {
                   const contentChunk = String(data.content); // Ensure it's a string
                   fullMessage += contentChunk;
-                  console.log('📝 Adding chunk:', { chunk: contentChunk, total: fullMessage.length });
                   onChunk?.(contentChunk);
                 } else if (data.content === "") {
                   // Even empty strings should be processed

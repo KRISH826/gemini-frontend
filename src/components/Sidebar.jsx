@@ -8,8 +8,6 @@ import { Link } from "react-router";
 
 const Sidebar = () => {
   const [collapse, setCollapse] = React.useState(false);
-  console.log(collapse);
-
   const handleCollapse = () => {
     setCollapse(!collapse);
   };

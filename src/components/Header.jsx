@@ -5,10 +5,9 @@ import { RxSun } from "react-icons/rx";
 import { motion } from "motion/react";
 import { HiOutlineBars3 } from "react-icons/hi2";
 
-const Header = ({handleCollapse, mobileSidebar}) => {
+const Header = ({handleCollapse}) => {
   const dispatch = useDispatch();
   const theme = useSelector((state) => state.theme.mode);
-  console.log(mobileSidebar);
   return (
     <header className="flex w-full border-b-gray-100 dark:border-b-gray-100/20 border-b mx-auto justify-between items-center py-2.5">
       <div className="logo flex gap-2 items-center">

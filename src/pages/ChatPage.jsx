@@ -31,14 +31,17 @@ const ChatPage = () => {
 
   // Fetch chat when ID changes
   useEffect(() => {
-    console.log("🔵 ChatPage useEffect - ID:", id, "Last fetched:", hasFetchedRef.current);
     if (id && id !== hasFetchedRef.current) {
-      console.log("📥 Fetching chat:", id);
+      if (currentChat?._id === id && currentChat.messages?.length > 0) {
+        hasFetchedRef.current = id;
+        return;
+      }
+      
       dispatch(getChatById(id));
       dispatch(resetTypingEffect());
       hasFetchedRef.current = id;
     }
-  }, [id, dispatch]);
+  }, [id, dispatch, currentChat]);
 
   // Smooth scroll to bottom
   const scrollToBottom = () => {
