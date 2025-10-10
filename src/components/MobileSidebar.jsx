@@ -11,7 +11,7 @@ const MobileSidebar = ({ handleCollapse, mobileSidebar }) => {
   return (
     <>
       <aside
-        className={`fixed lg:hidden top-0 left-0 z-50 min-h-screen w-[265px] py-6 px-4 flex flex-col bg-[#f0f4f9] dark:bg-dark-aside
+        className={`fixed lg:hidden top-0 left-0 z-50 min-h-screen w-[280px] py-6 px-4 flex flex-col bg-[#f0f4f9] dark:bg-dark-aside
         transition-transform duration-300 ease-in-out
        ${mobileSidebar ? "translate-x-0" : "-translate-x-full"}`}
       >

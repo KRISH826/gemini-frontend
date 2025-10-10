@@ -92,7 +92,7 @@ const ChatList = ({ collapse, handleCollapse }) => {
                   <FaRegTrashAlt
                     className="
                       absolute top-1/2 -translate-y-1/2 
-                      right-[-20px] group-hover:right-[6px]
+                      lg:right-[-20px] right-[6px] group-hover:right-[6px]
                       transition-all duration-500 cursor-pointer text-red-500
                     "
                   />
