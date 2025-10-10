@@ -1,4 +1,3 @@
-// chatThunk.js - UPDATED VERSION
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import {
   createNewChatApi,
@@ -91,13 +90,13 @@ export const createNewMessage = createAsyncThunk(
   }
 );
 
-// ✅ FIXED: Always add user message here
 export const sendMessageStream = createAsyncThunk(
   "/gemini/sendmessage/stream",
-  async ({ chatId, message }, thunkAPI) => {
+  async ({ chatId, message, isFirstMessage = false }, thunkAPI) => {
     try {
-      // Always add user message
-      thunkAPI.dispatch(addUserMessage(message));
+      if (!isFirstMessage) {
+        thunkAPI.dispatch(addUserMessage(message));
+      }
 
       thunkAPI.dispatch(setIsStreaming(true));
       thunkAPI.dispatch(clearStreamingMessage());
@@ -106,13 +105,11 @@ export const sendMessageStream = createAsyncThunk(
         sendMessageStreamApi(
           chatId,
           message,
-          // 🔹 onChunk
           (chunk) => {
             if (typeof chunk === "string") {
               thunkAPI.dispatch(appendToStreamingMessage(chunk));
             }
           },
-          // 🔹 onComplete
           (finalData) => {
             thunkAPI.dispatch(finalizeStreamingMessage());
 
@@ -130,7 +127,6 @@ export const sendMessageStream = createAsyncThunk(
               message: safeMessage,
             });
           },
-          // 🔹 onError
           (error) => {
             thunkAPI.dispatch(clearStreamingMessage());
             reject(new Error(error));

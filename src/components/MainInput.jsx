@@ -1,4 +1,3 @@
-// MainInput.js - OPTIMISTIC UI UPDATE VERSION
 import React, { useEffect, useRef, useState } from "react";
 import { MdOutlineKeyboardVoice } from "react-icons/md";
 import { LuImagePlus } from "react-icons/lu";
@@ -7,7 +6,6 @@ import { useDispatch, useSelector } from "react-redux";
 import { useParams, useNavigate } from "react-router-dom";
 import { clearInput, setInputValue } from "../redux/suggestion/SuggestionSlice";
 import { createNewMessage, sendMessageStream } from "../redux/chat/chatThunk";
-import { setPendingMessage } from "../redux/chat/chatSlice";
 import { motion } from "motion/react";
 
 const MainInput = () => {
@@ -50,7 +48,6 @@ const MainInput = () => {
     if (!value.trim() || messageLoading || isStreaming) return;
     const messageToSend = value.trim();
 
-    // Clear input immediately for better UX
     dispatch(clearInput());
     if (textRef.current) {
       textRef.current.style.height = "34px";
@@ -58,32 +55,26 @@ const MainInput = () => {
     }
 
     if (chatId) {
-      // Existing chat - normal flow
       dispatch(sendMessageStream({ chatId, message: messageToSend }));
     } else {
-      // NEW CHAT - Set pending message FIRST
-      console.log("🚀 Setting pending message:", messageToSend);
-      dispatch(setPendingMessage(messageToSend));
-
       try {
-        // Create new chat
-        console.log("📝 Creating new chat...");
         const result = await dispatch(createNewMessage(messageToSend)).unwrap();
         const newid = result.data.chat._id;
-        console.log("✅ Chat created, ID:", newid);
 
-        // Navigate immediately
-        console.log("🔄 Navigating to:", `/chat/${newid}`);
         navigate(`/chat/${newid}`, { replace: true });
 
-        // Small delay for navigation to complete
         setTimeout(() => {
-          console.log("📤 Sending message stream...");
-          dispatch(sendMessageStream({ chatId: newid, message: messageToSend }));
+          // ✅ isFirstMessage flag bhejo
+          dispatch(
+            sendMessageStream({
+              chatId: newid,
+              message: messageToSend,
+              isFirstMessage: true,
+            })
+          );
         }, 100);
       } catch (error) {
         console.error("Error creating chat:", error);
-        dispatch(setPendingMessage(null));
         alert("Failed to create new chat");
       }
     }

@@ -7,7 +7,8 @@ import { motion } from "motion/react";
 const TypingEffect = ({ text, speed = 18, onComplete }) => {
   const [displayedText, setDisplayedText] = useState("");
   const [isTyping, setIsTyping] = useState(true);
-  const frameRef = useRef(null);
+  const startTimeRef = useRef(null);
+  const intervalRef = useRef(null);
 
   useEffect(() => {
     if (typeof text !== "string" || !text.trim() || text === "undefined") {
@@ -15,44 +16,40 @@ const TypingEffect = ({ text, speed = 18, onComplete }) => {
       setIsTyping(false);
       return;
     }
+
     setDisplayedText("");
     setIsTyping(true);
-    let index = 0;
-    let lastTime = 0;
+    startTimeRef.current = Date.now();
 
-    const step = (time) => {
-      if (time - lastTime >= speed) {
-        if (index < text.length) {
-          // Append 1 more char instead of slicing whole text
-          setDisplayedText((prev) => prev + text.charAt(index));
-          index++;
-          lastTime = time;
-        } else {
-          setIsTyping(false);
-          if (onComplete) onComplete();
-          return;
-        }
+    intervalRef.current = setInterval(() => {
+      const elapsed = Date.now() - startTimeRef.current;
+      const charCount = Math.floor(elapsed / speed);
+
+      if (charCount >= text.length) {
+        setDisplayedText(text);
+        setIsTyping(false);
+        if (onComplete) onComplete();
+        clearInterval(intervalRef.current);
+      } else {
+        setDisplayedText(text.substring(0, charCount));
       }
-      frameRef.current = requestAnimationFrame(step);
-    };
-
-    frameRef.current = requestAnimationFrame(step);
+    }, speed);
 
     return () => {
-      if (frameRef.current) cancelAnimationFrame(frameRef.current);
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
     };
   }, [text, speed, onComplete]);
 
   return (
     <div className="relative prose dark:prose-invert max-w-none markdown">
-      {/* Markdown rendering */}
       <ReactMarkdown
         components={MarkDownComponents}
         remarkPlugins={[remarkGfm]}
       >
         {displayedText || "\u200B"}
       </ReactMarkdown>
-      {/* Blinking cursor */}
       {isTyping && (
         <motion.span
           animate={{

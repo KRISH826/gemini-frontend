@@ -1,9 +1,8 @@
-// StreamingTypingEffect.js
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { MarkDownComponents } from "./markdown/MarkDown";
-import {motion} from "motion/react";
+import { motion } from "motion/react";
 
 const StreamingTypingEffect = ({
   streamingText,
@@ -14,32 +13,42 @@ const StreamingTypingEffect = ({
 }) => {
   const [displayedText, setDisplayedText] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const startTimeRef = useRef(null);
+  const intervalRef = useRef(null);
 
   useEffect(() => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+    }
+
     if (isStreaming) {
-      // 🟢 While streaming → just show the incoming text directly
       setDisplayedText(streamingText);
       setIsTyping(false);
     } else if (finalText) {
-      // 🟡 After streaming ends → simulate typing effect
       setDisplayedText("");
       setIsTyping(true);
-      let index = 0;
+      startTimeRef.current = Date.now();
 
-      function typeChar() {
-        if (index < finalText.length) {
-          setDisplayedText((prev) => prev + finalText[index]);
-          index++;
-          const nextSpeed = speed + Math.random() * 60; // add variation
-          setTimeout(typeChar, nextSpeed);
-        } else {
+      intervalRef.current = setInterval(() => {
+        const elapsed = Date.now() - startTimeRef.current;
+        const charCount = Math.floor(elapsed / speed);
+
+        if (charCount >= finalText.length) {
+          setDisplayedText(finalText);
           setIsTyping(false);
           if (onComplete) onComplete();
+          clearInterval(intervalRef.current);
+        } else {
+          setDisplayedText(finalText.substring(0, charCount));
         }
-      }
-
-      typeChar();
+      }, speed);
     }
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
   }, [isStreaming, streamingText, finalText, speed, onComplete]);
 
   return (
