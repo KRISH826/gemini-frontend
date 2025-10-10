@@ -14,7 +14,7 @@ const NewChatPage = () => {
   }, [dispatch]);
   return (
     <>
-      <div className="mx-auto main-wrapper h-full flex flex-col justify-center pt-5">
+      <div className="mx-auto main-wrapper flex flex-col justify-center pt-5 min-h-[calc(100dvh-64px)]">
         <div className="flex-1 flex flex-col justify-center">
           <Heading />
           <Suggestions />

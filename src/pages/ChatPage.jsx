@@ -71,7 +71,7 @@ const ChatPage = () => {
   };
 
   return (
-    <div className="flex-1 main-wrapper flex flex-col h-[calc(100vh-64px)]">
+    <div className="flex-1 main-wrapper flex flex-col h-[calc(100dvh-64px)]">
       {isLoading && !currentChat ? (
         <div className="mx-auto flex-1 flex justify-center items-center flex-col">
           <div className="w-10 h-10 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin"></div>
@@ -106,7 +106,7 @@ const ChatPage = () => {
                           className={`${
                             isAssistant &&
                             isLastMessage &&
-                            "min-h-[calc(100vh-280px)]"
+                            "min-h-[calc(100dvh-280px)]"
                           }`}
                         >
                           <motion.div
@@ -153,7 +153,7 @@ const ChatPage = () => {
                         animate={{ opacity: 1 }}
                         transition={{ duration: 0.4 }}
                       >
-                        <div className="text-main-dark2 font-medium min-h-[calc(100vh-280px)]">
+                        <div className="text-main-dark2 font-medium min-h-[calc(100dvh-280px)]">
                           <div className="flex items-center gap-2">
                             <motion.img
                               animate={{
